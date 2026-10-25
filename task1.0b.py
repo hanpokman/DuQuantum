@@ -41,11 +41,14 @@ class HarmonicOscillator:
 
         # Fock distribution at the final time
         fig2, ax2 = plt.subplots()
-        fig3, ax3 = plt.subplots()
         dq.plot.fock(result.states[0], ax=ax2)
-        dq.plot.fock_evolution(result,ax=ax3)
         ax2.set_title(r'Fock distribution at $t = %.1f\ \mu$s' % self.T)
-        fig2.savefig('fock_final.png', dpi=150)
+        fig2.savefig('fock_final.png',   dpi=150)
+
+        fig3, ax3 = plt.subplots()
+        dq.plot.fock_evolution(result.states, times=self.tsave, ax=ax3)
+        ax3.set_xlabel(r'$t$ ($\mu$s)')
+        fig3.savefig('fock_evolution.png', dpi=150)
         plt.show()
 
 
