@@ -3,8 +3,12 @@ import jax
 import math
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
+from pathlib import Path
+FIG = Path(__file__).resolve().parent.parent / "figures" / "task1_0"
+FIG.mkdir(parents=True, exist_ok=True)
 
 dq.set_device('cpu')
+dq.set_precision('double')
 
 
 class HarmonicOscillator:
@@ -19,7 +23,7 @@ class HarmonicOscillator:
         # part (c) parameters
         self.kappa2 = self.kappa        # nominal two-photon loss rate
         self.alpha_c = 2.1              # drive/stabilization amplitude
-        self.kappa_a = 0.0              # TODO: set to the provided kappa_a value
+        self.kappa_a = self.two_pi * 9.3e-3  # rad/us  (kappa_a/2pi = 9.3 kHz)
         self.T_c = 2.0                  # us
 
         self.a = dq.destroy(self.N)
@@ -46,13 +50,13 @@ class HarmonicOscillator:
         ax.set_xlabel(r'$t$ ($\mu$s)')
         ax.set_ylabel(r'$\langle \hat a^\dagger \hat a\rangle$')
         ax.legend()
-        fig.savefig('photon_loss.png', dpi=150)
+        fig.savefig(FIG / 'task1_0b_two_photon_loss.png', dpi=150)
         plt.show()
 
         fig2, ax2 = plt.subplots()
         dq.plot.fock(result.states[-1], ax=ax2)
         ax2.set_title(r'Fock distribution at $t = %.1f\ \mu$s' % self.T)
-        fig2.savefig('fock_final.png', dpi=150)
+        fig2.savefig(FIG / 'fock_final.png', dpi=150)
         plt.show()
 
     def stabilization(self, kappa2):
@@ -71,16 +75,26 @@ class HarmonicOscillator:
             (4 * self.kappa2, r'$4\kappa_2$'),
         ]
 
-        fig, ax = plt.subplots()
+        target = self.alpha_c ** 2
+        fig, (ax, ax_r) = plt.subplots(1, 2, figsize=(11, 4))
         for k2, label in cases:
             n_t = self.stabilization(k2)
             ax.plot(self.tsave_c, n_t, label=label)
-        ax.axhline(self.alpha_c ** 2, color='k', linestyle='--', linewidth=1,
-                   label=r'$\alpha^2$')
+            ax_r.plot(self.tsave_c * k2, n_t, label=label)   # same curves vs kappa2 * t
+            # settling time = last time <n> is more than 1 % away from alpha^2
+            outside = jnp.where(jnp.abs(n_t - target) > 0.01 * target)[0]
+            t_settle = float(self.tsave_c[outside[-1] + 1])
+            print('1.0(c) %-22s final <n> = %.4f  t_settle = %.3f us  kappa2*t_settle = %.2f'
+                  % (label, float(n_t[-1]), t_settle, float(k2) * t_settle))
+        for axis in (ax, ax_r):
+            axis.axhline(target, color='k', linestyle='--', linewidth=1, label=r'$\alpha^2$')
+            axis.set_ylabel(r'$\langle \hat a^\dagger \hat a\rangle$')
         ax.set_xlabel(r'$t$ ($\mu$s)')
-        ax.set_ylabel(r'$\langle \hat a^\dagger \hat a\rangle$')
+        ax_r.set_xlabel(r'$\kappa_2 t$')
+        ax_r.set_xlim(0, 3)
         ax.legend()
-        fig.savefig('cat_stabilization.png', dpi=150)
+        fig.tight_layout()
+        fig.savefig(FIG / 'cat_stabilization.png', dpi=150)
         plt.show()
     def plotStabilizationWigner(self, kappa2=None):
         if kappa2 is None:
@@ -93,6 +107,8 @@ class HarmonicOscillator:
 
         # pick a few times: start (vacuum), early transient, and settled
         idx = [0, 40, 100, -1]
+        parity = dq.expect(dq.parity(self.N), result.states).real
+        print('1.0(c) parity at t = %.1f us: %.3f' % (float(self.tsave_c[-1]), float(parity[-1])))
         states = [result.states[i] for i in idx]
         times = [float(self.tsave_c[i]) for i in idx]
 
@@ -100,7 +116,7 @@ class HarmonicOscillator:
         for ax, state, t in zip(axes, states, times):
             dq.plot.wigner(state, ax=ax, cross=True)
             ax.set_title(r'$t = %.2f\ \mu$s' % t)
-        fig.savefig('cat_wigner.png', dpi=150)
+        fig.savefig(FIG / 'cat_wigner.png', dpi=150)
         plt.show()
 
     def plotStabilizationGif(self, kappa2=None, step=4, fps=20):
@@ -123,12 +139,12 @@ class HarmonicOscillator:
             ax.set_title(r'$t = %.2f\ \mu$s' % float(self.tsave_c[i]))
 
         anim = FuncAnimation(fig, update, frames=frames)
-        anim.save('cat_stabilization.gif', writer=PillowWriter(fps=fps))
+        anim.save(FIG / 'cat_stabilization.gif', writer=PillowWriter(fps=fps))
         plt.close(fig)
         print('saved cat_stabilization.gif with %d frames' % len(frames))
 
 
 test = HarmonicOscillator()
-#test.plotStabilization()
+test.plotStabilization()
 test.plotStabilizationWigner()
 test.plotStabilizationGif()
