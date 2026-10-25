@@ -526,6 +526,52 @@ DuQuantum/
 
 As the challenge rules allow, we used Claude (Anthropic) to review our scripts (it pointed out the bugs in Section 11), to add the printed check numbers and a few plot panels, to write the optional NumPy check script, and to help draft this README. For Task 1.3 it helped write up the results of our `task1_3.py` and draft the cost discussion in Section 8.4. For Tasks 1.1 and 1.2 it also helped add the effective-model overlay and Wigner snapshots to the 1.1 script and write up the results. We can explain every equation and figure above, and we checked every number against the formulas in Eqs. (2)–(5) and against the convergence grid.
 
+## 13. Project story
+
+### Inspiration
+
+We are all very interested in the dynamics of open quantum systems. As this challenge makes clear, there are many ingenious ways to engineer a Hamiltonian while respecting the constraints of real-world environments, and to harness the behaviour of nature itself in designing qubits. Cat qubits are a striking example: instead of fighting dissipation, they *use* it. A deliberately lossy buffer mode, driven in the right way, becomes the mechanism that protects the qubit. That idea, turning the environment from an enemy into a tool, is what drew us to the Alice & Bob challenge.
+
+### What it does
+
+The project builds a dissipatively stabilized cat qubit in simulation, one physical ingredient at a time, and checks every step against a formula we derive by hand:
+
+* **Task 1.0** adds single-photon loss, then pure two-photon loss, then two-photon loss with a drive, showing how a coherent state decays, why two-photon loss stalls at half a photon, and how the drive inflates the vacuum into a cat with $\langle\hat n\rangle \approx \alpha^2$.
+* **Task 1.1** replaces the shortcut with the full memory–buffer model, finds that the cat overshoots to about 1.5× its target and rings, and explains why from the parameters ($\epsilon_d/\kappa_b \approx 1.3$: the buffer is too slow to be eliminated).
+* **Task 1.2** runs a 42-point convergence grid, showing that the steady state needs very few levels while the overshoot needs $(N_a, N_b) = (28, 12)$, and that the suggested $N_b = 6$ cuts the peak by 11 %.
+* **Task 1.3** proves that inflation from vacuum prepares the even cat *superposition*, measures how long it stays one (about 1.9 µs), and prepares a definite logical state $\lvert{+\alpha}\rangle$ with fidelity up to 0.99990 using a 25 ns drive pulse from vacuum.
+
+### How we built it
+
+* **Simulation:** Python with [`dynamiqs`](https://www.dynamiqs.org), a JAX-based library for quantum dynamics, solving the Lindblad master equation (`dq.mesolve`) in double precision with tight solver tolerances.
+* **Workflow:** we explored in a Jupyter notebook, then moved each task into its own script under `code/`, with a shared two-mode model in `cat_model.py`. Every script saves its figures and prints the numbers used in this README.
+* **Verification:** each result is compared with a closed-form prediction (Eqs. (2)–(5)) or a convergence test, plus an independent NumPy re-solve of Task 1.0. Expensive runs, like the 42-run grid, are cached so they can be re-plotted in seconds.
+* **Analysis:** parity, purity and fidelity of the memory after tracing out the buffer (`dq.ptrace`), Wigner-function snapshots, and parameter sweeps (for example, 91 drive pulses for Task 1.3(b)).
+
+### Challenges we ran into
+
+When faced with the open-ended problems, we had to explore many possible ways to modify the terms in the Lindblad equation to evolve our state into a desired outcome. This required much thinking from the first principles of quantum mechanics. In Task 1.3(b), for example, we had to work out *why* starting from vacuum can never pick $+\alpha$ over $-\alpha$ (the symmetry and parity argument) before we could design something that does: first a displaced starting state, then a short drive pulse whose area turned out to be the key variable.
+
+Numerics were a second challenge. Results that looked reasonable were sometimes not converged: the suggested buffer truncation hid 11 % of the overshoot, and plotting bugs silently overwrote figures. We learned to treat every number as suspect until it matched a prediction or survived a convergence test (Section 11).
+
+### Accomplishments that we're proud of
+
+We came into this hackathon knowing only the basics of quantum mechanics and not much about quantum information science, but we managed to pick up the necessary knowledge as we worked on the project, and we were able to apply that knowledge to solve the challenge problems in a limited amount of time. In particular, we are proud that:
+
+* every result in this README is backed by a hand-derived prediction or a convergence check, not just a plot;
+* we found, rather than assumed, where the simple model and the default truncation break down;
+* our best logical-state preparation reaches 0.99990 fidelity starting from vacuum.
+
+### What we learned
+
+We learned a lot about the evolution of open quantum systems and how to modify the terms in the Lindblad equation to design cat qubits: how a jump operator encodes a physical process, why pair processes conserve parity, and how a conserved quantity decides which state you end up in. We really enjoyed the challenges posed by Alice & Bob.
+
+We also learned a great deal from talking with the representatives from Alice & Bob. Those conversations showed us that qubit design is only one layer of building a quantum computer. The Hamiltonian we simulated has to be realized in a superconducting circuit that someone fabricates, and fabrication choices feed back into the parameters we took as given, such as $g_2$, $\kappa_a$ and $\kappa_b$. Around the chip sit the cryogenics, the microwave control and readout electronics, and the error-correction layer that makes use of the cat qubit's noise bias. Seeing how these parts of the stack fit together, and how a choice at one level constrains the others, gave us a much better sense of what our simulations are for: they connect a design idea to what an experiment can actually build and measure.
+
+### What's next
+
+We plan to keep going with the challenge, starting with the Standard Track tasks: measuring the bit-flip and phase-flip rates and designing a readout. We plan to continue participating in future quantum hackathons, and we hope to possibly work at Alice & Bob one day, to contribute to cutting-edge research in superconducting qubits.
+
 ## References
 
 1. U. Réglade, A. Bocquet *et al.*, "Quantum control of a cat qubit with bit-flip times exceeding ten seconds," arXiv:2307.06617 (2023).
